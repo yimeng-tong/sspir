@@ -50,6 +50,14 @@ def to_tensor_uint8(img: np.ndarray) -> torch.Tensor:
     return tensor.unsqueeze(0) * 2.0 - 1.0
 
 
+def build_image_map(root: Path, suffixes):
+    mapping = {}
+    for path in sorted([p for p in root.rglob("*") if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".bmp"}]):
+        key = normalized_stem(path, suffixes)
+        mapping[key] = path
+    return mapping
+
+
 def main():
     args = parse_args()
     pred_dir = Path(args.pred_dir)
@@ -58,7 +66,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     pred_files = sorted([p for p in pred_dir.rglob("*") if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".bmp"}])
-    gt_files = {p.stem: p for p in gt_dir.rglob("*") if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".bmp"}}
+    gt_files = build_image_map(gt_dir, [])
 
     if not pred_files:
         if args.skip_empty:
