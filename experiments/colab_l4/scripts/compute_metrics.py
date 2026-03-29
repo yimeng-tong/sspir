@@ -1,6 +1,7 @@
 import argparse
 import csv
 import json
+import re
 from pathlib import Path
 
 import numpy as np
@@ -30,6 +31,13 @@ def normalized_stem(path: Path, suffixes):
     for suffix in suffixes:
         if stem.endswith(suffix):
             stem = stem[: -len(suffix)]
+    lowered = stem.lower()
+    for prefix in ("low", "normal", "high", "gt"):
+        if lowered.startswith(prefix):
+            tail = stem[len(prefix):]
+            if tail and re.search(r"\d", tail):
+                stem = tail
+                break
     return stem
 
 
