@@ -46,6 +46,31 @@ def make_run_dir(output_root: Path, method: str, dataset_name: str, run_name: st
     return output_root / method / dataset_name / suffix
 
 
+def count_prediction_images(path: Path) -> int:
+    return sum(1 for p in path.rglob("*") if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".bmp"})
+
+
+def fail_if_no_predictions(status_path: Path, pred_dir: Path, code: int) -> int:
+    if code != 0:
+        return code
+
+    num_predictions = count_prediction_images(pred_dir)
+    if num_predictions > 0:
+        return code
+
+    message = f"No prediction images were generated in {pred_dir}"
+    update_status(
+        status_path,
+        state="failed",
+        finished_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        return_code=1,
+        last_line=message,
+        error=message,
+        num_predictions=0,
+    )
+    return 1
+
+
 def patch_uretinex_compat(repo_root: Path) -> None:
     utils_path = repo_root / "utils.py"
     text = utils_path.read_text(encoding="utf-8")
@@ -93,6 +118,7 @@ def run_uretinex(args, run_dir: Path):
         str(args.gpu_id),
     ]
     code = run_command(cmd, repo_root, run_dir / "run.log", status_path)
+    code = fail_if_no_predictions(status_path, pred_dir, code)
     metadata = {
         "method": "uretinex",
         "dataset_name": args.dataset_name,
@@ -166,6 +192,7 @@ def run_diff_retinex(args, run_dir: Path):
         cmd.extend(["--use_gtmeans", "True"])
 
     code = run_command(cmd, repo_root, run_dir / "run.log", status_path)
+    code = fail_if_no_predictions(status_path, pred_dir, code)
     metadata = {
         "method": "diff-retinex",
         "dataset_name": args.dataset_name,
@@ -210,6 +237,7 @@ def run_reti_diff(args, run_dir: Path):
         nested_pngs = list(visualization_root.rglob("*.png"))
         if nested_pngs:
             pred_dir = nested_pngs[0].parent
+    code = fail_if_no_predictions(status_path, pred_dir, code)
 
     metadata = {
         "method": "reti-diff",

@@ -30,7 +30,8 @@ def main():
 
     summary_files = sorted(input_root.rglob("summary.json"))
     if not summary_files:
-        raise ValueError(f"No summary.json files found under {input_root}")
+        print(f"No summary.json files found under {input_root}")
+        return
 
     rows = []
     for summary_file in summary_files:
@@ -59,7 +60,8 @@ def main():
         )
 
     if not rows:
-        raise ValueError("No summary rows matched the requested filters.")
+        print("No summary rows matched the requested filters.")
+        return
 
     rows.sort(key=lambda row: (row["dataset_name"] or "", row["method"] or "", row["summary_path"]))
 
