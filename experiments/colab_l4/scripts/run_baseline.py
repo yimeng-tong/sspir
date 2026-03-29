@@ -46,8 +46,38 @@ def make_run_dir(output_root: Path, method: str, dataset_name: str, run_name: st
     return output_root / method / dataset_name / suffix
 
 
+def patch_uretinex_compat(repo_root: Path) -> None:
+    utils_path = repo_root / "utils.py"
+    text = utils_path.read_text(encoding="utf-8")
+
+    if "def compat_torch_load(" not in text:
+        marker = "import glob\n"
+        helper = (
+            "import glob\n\n"
+            "def compat_torch_load(path):\n"
+            "    try:\n"
+            "        return torch.load(path, map_location='cpu', weights_only=False)\n"
+            "    except TypeError:\n"
+            "        return torch.load(path, map_location='cpu')\n\n"
+        )
+        if marker not in text:
+            raise RuntimeError(f"Could not patch URetinex utils.py: missing marker {marker!r}")
+        text = text.replace(marker, helper, 1)
+
+    replacements = {
+        "checkpoint_Decom_low = torch.load(decom_model_path)": "checkpoint_Decom_low = compat_torch_load(decom_model_path)",
+        "checkpoint = torch.load(unfolding_model_path)": "checkpoint = compat_torch_load(unfolding_model_path)",
+        "checkpoint_Adjust = torch.load(adjust_model_path)": "checkpoint_Adjust = compat_torch_load(adjust_model_path)",
+    }
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+
+    utils_path.write_text(text, encoding="utf-8")
+
+
 def run_uretinex(args, run_dir: Path):
     repo_root = Path(args.repo_root)
+    patch_uretinex_compat(repo_root)
     pred_dir = ensure_dir(run_dir / "predictions")
     status_path = run_dir / "status.json"
     cmd = [
