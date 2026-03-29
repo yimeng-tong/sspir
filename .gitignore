@@ -1,0 +1,42 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Large or regenerated assets
+papers/official_pdf/
+experiments/repos/
+experiments/**/results/
+experiments/**/logs/
+experiments/**/tb_logger/
+experiments/**/checkpoint/
+experiments/**/generated_configs/
+experiments/**/dataset_view/
+experiments/**/predictions/
+experiments/**/metrics/
+experiments/**/rda_*/
+experiments/**/ida_*/
+experiments/**/visualization/
+experiments/**/experiments/
+
+# Colab local state
+experiments/colab_l4/config/run_config.json
+experiments/colab_l4/scripts/__pycache__/
+
+# Data / weights / outputs
+datasets/
+weights/
+runs/
+*.ckpt
+*.safetensors
+*.pth
+*.pt
+*.bin
