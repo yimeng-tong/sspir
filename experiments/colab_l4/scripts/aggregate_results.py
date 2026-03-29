@@ -8,7 +8,17 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Aggregate metric summaries into markdown/csv tables.")
     parser.add_argument("--input-root", required=True)
     parser.add_argument("--output-root", required=True)
+    parser.add_argument("--allowed-method", action="append", default=[])
+    parser.add_argument("--only-completed", action="store_true")
     return parser.parse_args()
+
+
+def format_metric(value):
+    return f"{value:.4f}" if isinstance(value, (int, float)) else "NA"
+
+
+def format_elapsed(value):
+    return f"{value:.2f}" if isinstance(value, (int, float)) else "NA"
 
 
 def main():
@@ -16,6 +26,7 @@ def main():
     input_root = Path(args.input_root)
     output_root = Path(args.output_root)
     output_root.mkdir(parents=True, exist_ok=True)
+    allowed_methods = set(args.allowed_method)
 
     summary_files = sorted(input_root.rglob("summary.json"))
     if not summary_files:
@@ -25,9 +36,16 @@ def main():
     for summary_file in summary_files:
         data = json.loads(summary_file.read_text(encoding="utf-8"))
         run_status = data.get("run_status", {})
+        method = data.get("method")
+
+        if allowed_methods and method not in allowed_methods:
+            continue
+        if args.only_completed and run_status.get("state") != "completed":
+            continue
+
         rows.append(
             {
-                "method": data.get("method"),
+                "method": method,
                 "dataset_name": data.get("dataset_name"),
                 "num_images": data.get("num_images"),
                 "psnr": data.get("psnr"),
@@ -39,6 +57,11 @@ def main():
                 "summary_path": str(summary_file),
             }
         )
+
+    if not rows:
+        raise ValueError("No summary rows matched the requested filters.")
+
+    rows.sort(key=lambda row: (row["dataset_name"] or "", row["method"] or "", row["summary_path"]))
 
     csv_path = output_root / "aggregated_metrics.csv"
     with csv_path.open("w", encoding="utf-8", newline="") as f:
@@ -68,15 +91,15 @@ def main():
     ]
     for row in rows:
         md_lines.append(
-            "| {method} | {dataset_name} | {num_images} | {psnr:.4f} | {ssim:.4f} | {lpips:.4f} | {niqe_display} | {elapsed_display} |".format(
+            "| {method} | {dataset_name} | {num_images} | {psnr_display} | {ssim_display} | {lpips_display} | {niqe_display} | {elapsed_display} |".format(
                 method=row["method"],
                 dataset_name=row["dataset_name"],
                 num_images=row["num_images"],
-                psnr=row["psnr"],
-                ssim=row["ssim"],
-                lpips=row["lpips"],
-                niqe_display=f"{row['niqe']:.4f}" if isinstance(row["niqe"], (int, float)) else "NA",
-                elapsed_display=f"{row['elapsed_sec']:.2f}" if isinstance(row["elapsed_sec"], (int, float)) else "NA",
+                psnr_display=format_metric(row["psnr"]),
+                ssim_display=format_metric(row["ssim"]),
+                lpips_display=format_metric(row["lpips"]),
+                niqe_display=format_metric(row["niqe"]),
+                elapsed_display=format_elapsed(row["elapsed_sec"]),
             )
         )
 
