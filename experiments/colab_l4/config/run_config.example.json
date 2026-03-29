@@ -1,5 +1,5 @@
 {
-  "note": "Copy this file to run_config.json and replace every placeholder path before running the notebook.",
+  "note": "Copy this file to run_config.json beside the notebook code root and replace every placeholder path before running the notebook. Keep datasets, weights and runs on Google Drive; code can stay in the cloned GitHub repo.",
   "drive_root": "/content/drive/MyDrive/thesis_llie_l4",
   "repos_root": "/content/thesis_llie_repos",
   "output_root": "/content/drive/MyDrive/thesis_llie_l4/runs",

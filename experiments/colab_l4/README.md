@@ -25,7 +25,9 @@
 ## 文件说明
 
 - `llie_l4_pipeline.ipynb`
-  - Colab 主 notebook
+  - Colab 主 notebook，兼容两种代码来源
+  - 优先推荐直接从 GitHub 克隆整个 `sspir` 仓库后运行
+  - 也兼容把 `experiments/colab_l4` 整个目录上传到 Drive 后运行
 - `config/run_config.example.json`
   - 路径配置模板
 - `scripts/progress_utils.py`
@@ -41,6 +43,10 @@
 
 ```text
 MyDrive/
+  thesis/
+    experiments/
+      colab_l4/
+        # 只有在你选择“代码也放 Drive”时才需要
   thesis_llie_l4/
     datasets/
       LOL/
@@ -67,6 +73,26 @@ MyDrive/
         retinex_decomnet.pth
     runs/
 ```
+
+## 推荐运行模式
+
+优先推荐：
+
+1. 在 Colab/VSCode 远程环境里把 GitHub 仓库克隆到 `/content/sspir`
+2. 直接打开 `/content/sspir/experiments/colab_l4/llie_l4_pipeline.ipynb`
+3. 只把数据集、权重和 `runs/` 放在 Google Drive
+
+这种模式的好处是：
+
+- 代码更新直接通过 `git pull` 同步
+- 不需要每次把 notebook 和脚本重新上传到 Drive
+- 我们后续协作时，仓库里的 notebook 输出和脚本改动都更容易对齐
+
+如果你不想用 GitHub 克隆模式，仍然可以把 `experiments/colab_l4` 整个目录上传到：
+
+- `MyDrive/thesis/experiments/colab_l4/`
+
+当前 notebook 会自动尝试识别这两种路径。
 
 ## 推荐执行顺序
 
