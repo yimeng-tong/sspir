@@ -20,6 +20,8 @@ def parse_args():
     parser.add_argument("--strip-suffix", action="append", default=[])
     parser.add_argument("--use-niqe", action="store_true")
     parser.add_argument("--resize-pred-to-gt", action="store_true")
+    parser.add_argument("--skip-empty", action="store_true")
+    parser.add_argument("--skip-no-match", action="store_true")
     return parser.parse_args()
 
 
@@ -51,6 +53,9 @@ def main():
     gt_files = {p.stem: p for p in gt_dir.rglob("*") if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".bmp"}}
 
     if not pred_files:
+        if args.skip_empty:
+            print(f"Skip metrics because no prediction images were found in {pred_dir}")
+            return
         raise ValueError(f"No prediction images found in {pred_dir}")
 
     import lpips
@@ -108,6 +113,9 @@ def main():
         )
 
     if not rows:
+        if args.skip_no_match:
+            print("Skip metrics because no matched prediction/ground-truth pairs were found.")
+            return
         raise ValueError("No matched prediction/ground-truth pairs were found.")
 
     per_image_csv = output_dir / "per_image.csv"
