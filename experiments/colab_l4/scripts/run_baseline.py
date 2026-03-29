@@ -71,6 +71,28 @@ def fail_if_no_predictions(status_path: Path, pred_dir: Path, code: int) -> int:
     return 1
 
 
+def prepare_diff_resume_prefix(weight_path: Path, target_dir: Path, prefix_name: str = "best") -> str:
+    ensure_dir(target_dir)
+
+    if weight_path.name.endswith("_gen.pth"):
+        gen_target = target_dir / f"{prefix_name}_gen.pth"
+        symlink_or_copy(weight_path, gen_target)
+        opt_candidate = weight_path.with_name(weight_path.name.replace("_gen.pth", "_opt.pth"))
+        if opt_candidate.exists():
+            symlink_or_copy(opt_candidate, target_dir / f"{prefix_name}_opt.pth")
+        return str(target_dir / prefix_name)
+
+    if weight_path.name.endswith(".pth"):
+        gen_target = target_dir / f"{prefix_name}_gen.pth"
+        symlink_or_copy(weight_path, gen_target)
+        opt_candidate = weight_path.with_name(weight_path.stem + "_opt.pth")
+        if opt_candidate.exists():
+            symlink_or_copy(opt_candidate, target_dir / f"{prefix_name}_opt.pth")
+        return str(target_dir / prefix_name)
+
+    return str(weight_path)
+
+
 def patch_uretinex_compat(repo_root: Path) -> None:
     utils_path = repo_root / "utils.py"
     text = utils_path.read_text(encoding="utf-8")
@@ -144,6 +166,16 @@ def run_diff_retinex(args, run_dir: Path):
         raise ValueError("diff-retinex requires --diff-tdn-weight, --diff-rda-weight and --diff-ida-weight")
 
     symlink_or_copy(Path(args.diff_tdn_weight), repo_root / "model" / "Diff_TDN" / "weights" / "checkpoint_LOL_Diff_TDN.pth")
+    rda_resume_prefix = prepare_diff_resume_prefix(
+        Path(args.diff_rda_weight),
+        repo_root / "model" / "Diff_RDA" / "weights",
+        prefix_name="best",
+    )
+    ida_resume_prefix = prepare_diff_resume_prefix(
+        Path(args.diff_ida_weight),
+        repo_root / "model" / "Diff_IDA" / "weights",
+        prefix_name="best",
+    )
 
     main_cfg = read_json_with_comments(repo_root / "config" / "Diff_Retinex_val.json")
     rda_cfg = read_json_with_comments(repo_root / "model" / "Diff_RDA" / "config" / "Diff_RDA_data_val.json")
@@ -161,14 +193,14 @@ def run_diff_retinex(args, run_dir: Path):
     rda_cfg["path"]["tb_logger"] = str(run_dir / "rda_tb_logger")
     rda_cfg["path"]["results"] = str(run_dir / "rda_results")
     rda_cfg["path"]["checkpoint"] = str(run_dir / "rda_checkpoint")
-    rda_cfg["path"]["resume_state"] = str(Path(args.diff_rda_weight))
+    rda_cfg["path"]["resume_state"] = rda_resume_prefix
 
     ida_cfg["name"] = f"Diff_IDA_{args.dataset_name}"
     ida_cfg["path"]["log"] = str(run_dir / "ida_logs")
     ida_cfg["path"]["tb_logger"] = str(run_dir / "ida_tb_logger")
     ida_cfg["path"]["results"] = str(run_dir / "ida_results")
     ida_cfg["path"]["checkpoint"] = str(run_dir / "ida_checkpoint")
-    ida_cfg["path"]["resume_state"] = str(Path(args.diff_ida_weight))
+    ida_cfg["path"]["resume_state"] = ida_resume_prefix
 
     main_path = config_dir / "Diff_Retinex_val.json"
     rda_path = config_dir / "Diff_RDA_data_val.json"
