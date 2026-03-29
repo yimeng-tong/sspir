@@ -28,6 +28,7 @@
   - Colab 主 notebook，兼容两种代码来源
   - 优先推荐直接从 GitHub 克隆整个 `sspir` 仓库后运行
   - 也兼容把 `experiments/colab_l4` 整个目录上传到 Drive 后运行
+  - 在 VSCode 插件连接的 Colab 远端环境里，如果 `/content/sspir` 不存在，第一格会自动克隆仓库
 - `config/run_config.example.json`
   - 路径配置模板
 - `scripts/progress_utils.py`
@@ -93,6 +94,8 @@ MyDrive/
 - `MyDrive/thesis/experiments/colab_l4/`
 
 当前 notebook 会自动尝试识别这两种路径。
+
+如果你是通过 VSCode 的 Colab/Jupyter 插件连接远端运行环境，通常直接打开仓库里的 notebook 并运行第一格即可，不需要你先手动执行 `git clone`。
 
 ## 推荐执行顺序
 
