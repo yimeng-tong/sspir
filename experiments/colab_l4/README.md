@@ -39,6 +39,8 @@
   - 指标计算器
 - `scripts/aggregate_results.py`
   - 汇总多个结果为 markdown/csv 表格
+- `scripts/audit_runs.py`
+  - 审计 `runs/` 下每一轮实验是否完成、是否生成预测图、是否写出 `metrics/summary.json`
 
 ## 建议的 Drive 目录结构
 
@@ -113,6 +115,31 @@ MyDrive/
 - `predictions/` 或方法对应输出目录
 - `metrics/per_image.csv`
 - `metrics/summary.json`
+
+## 结果审计与全量汇总
+
+当你分阶段跑完 `uretinex`、`diff-retinex`、`reti-diff` 后，notebook 最后一格默认只会汇总当前启用的方法。若你要生成“第四章总表”，建议再执行下面两条命令：
+
+```bash
+python /content/sspir/experiments/colab_l4/scripts/audit_runs.py \
+  --input-root /content/drive/MyDrive/thesis_llie_l4/runs \
+  --output-root /content/drive/MyDrive/thesis_llie_l4/runs/audit \
+  --only-completed
+
+python /content/sspir/experiments/colab_l4/scripts/aggregate_results.py \
+  --input-root /content/drive/MyDrive/thesis_llie_l4/runs \
+  --output-root /content/drive/MyDrive/thesis_llie_l4/runs/aggregated_all \
+  --only-completed
+```
+
+这两步分别会生成：
+
+- `runs/audit/audit_runs.csv`
+- `runs/audit/audit_runs.md`
+- `runs/aggregated_all/aggregated_metrics.csv`
+- `runs/aggregated_all/aggregated_metrics.md`
+
+其中 `audit_runs.*` 用来检查哪些实验已经真正完成，`aggregated_metrics.*` 则可以直接拿来填第四章主表。
 
 ## 与第四章的对应关系
 
