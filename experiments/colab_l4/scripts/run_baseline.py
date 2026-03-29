@@ -1,5 +1,6 @@
 import argparse
 import json
+import re
 import shutil
 import sys
 import time
@@ -91,6 +92,61 @@ def prepare_diff_resume_prefix(weight_path: Path, target_dir: Path, prefix_name:
         return str(target_dir / prefix_name)
 
     return str(weight_path)
+
+
+def image_files_in_dir(root: Path):
+    return sorted([p for p in root.iterdir() if p.is_file() and p.suffix.lower() in {".png", ".jpg", ".jpeg", ".bmp"}])
+
+
+def normalized_pair_key(path: Path) -> str:
+    stem = path.stem
+    lowered = stem.lower()
+    for prefix in ("low", "normal", "high", "gt"):
+        if lowered.startswith(prefix):
+            suffix = stem[len(prefix):]
+            if suffix and re.search(r"\d", suffix):
+                return suffix
+    return stem
+
+
+def prepare_retidiff_dataset_view(lq_dir: Path, gt_dir: Path, view_root: Path):
+    lq_files = image_files_in_dir(lq_dir)
+    gt_files = image_files_in_dir(gt_dir)
+
+    lq_names = {p.name for p in lq_files}
+    gt_names = {p.name for p in gt_files}
+    if lq_names == gt_names:
+        return lq_dir, gt_dir
+
+    lq_map = {}
+    for path in lq_files:
+        lq_map[normalized_pair_key(path)] = path
+    gt_map = {}
+    for path in gt_files:
+        gt_map[normalized_pair_key(path)] = path
+
+    common_keys = sorted(set(lq_map) & set(gt_map))
+    if not common_keys:
+        raise ValueError(f"Could not build paired view for Reti-Diff from {lq_dir} and {gt_dir}")
+
+    view_lq = ensure_dir(view_root / "lq")
+    view_gt = ensure_dir(view_root / "gt")
+    for old in view_lq.glob("*"):
+        if old.is_file() or old.is_symlink():
+            old.unlink()
+    for old in view_gt.glob("*"):
+        if old.is_file() or old.is_symlink():
+            old.unlink()
+
+    for key in common_keys:
+        lq_path = lq_map[key]
+        gt_path = gt_map[key]
+        suffix = gt_path.suffix.lower() or lq_path.suffix.lower() or ".png"
+        canonical_name = f"{key}{suffix}"
+        symlink_or_copy(lq_path, view_lq / canonical_name)
+        symlink_or_copy(gt_path, view_gt / canonical_name)
+
+    return view_lq, view_gt
 
 
 def patch_uretinex_compat(repo_root: Path) -> None:
@@ -241,16 +297,19 @@ def run_reti_diff(args, run_dir: Path):
     repo_root = Path(args.repo_root)
     status_path = run_dir / "status.json"
     config_dir = ensure_dir(run_dir / "generated_configs")
+    dataset_view_root = ensure_dir(run_dir / "dataset_view")
     if not args.reti_template or not args.reti_weight or not args.reti_decom_weight:
         raise ValueError("reti-diff requires --reti-template, --reti-weight and --reti-decom-weight")
 
     with open(args.reti_template, "r", encoding="utf-8") as f:
         opt = yaml.safe_load(f)
 
+    view_lq_dir, view_gt_dir = prepare_retidiff_dataset_view(Path(args.lq_dir), Path(args.gt_dir), dataset_view_root)
+
     opt["name"] = f"RetiDiff_{args.dataset_name}"
     dataset_key = next(iter(opt["datasets"].keys()))
-    opt["datasets"][dataset_key]["dataroot_gt"] = args.gt_dir
-    opt["datasets"][dataset_key]["dataroot_lq"] = args.lq_dir
+    opt["datasets"][dataset_key]["dataroot_gt"] = str(view_gt_dir)
+    opt["datasets"][dataset_key]["dataroot_lq"] = str(view_lq_dir)
     opt["path"]["pretrain_network_g"] = str(Path(args.reti_weight))
     opt["pretrain_decomnet_low"] = str(Path(args.reti_decom_weight))
     opt["num_gpu"] = 1
@@ -276,6 +335,8 @@ def run_reti_diff(args, run_dir: Path):
         "dataset_name": args.dataset_name,
         "pred_dir": str(pred_dir),
         "gt_dir": args.gt_dir,
+        "paired_view_lq_dir": str(view_lq_dir),
+        "paired_view_gt_dir": str(view_gt_dir),
         "status_path": str(status_path),
         "generated_opt": str(generated_opt),
     }
